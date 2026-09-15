@@ -1,0 +1,368 @@
+let VALID_SET = new Set();
+    async function loadWordList() {
+      const urls = [
+        "https://cdn.jsdelivr.net/gh/heisencoder/wordle@main/solutions.txt",
+        "https://cdn.jsdelivr.net/gh/heisencoder/wordle@main/guesses.txt"
+      ];
+      const texts = await Promise.all(urls.map(u => fetch(u).then(r => {
+        if (!r.ok) throw new Error("word list " + r.status);
+        return r.text();
+      })));
+      texts.forEach(t => {
+        t.split(/\s+/).forEach(w => {
+          w = w.trim().toUpperCase();
+          if (w.length === 5) VALID_SET.add(w);
+        });
+      });
+    }
+    const SIDE_POS = {
+      top:    [0,1,2,3,4],
+      right:  [4,5,6,7,8],
+      bottom: [9,10,11,12,8],
+      left:   [0,14,15,16,9]
+    };
+    const POS_SIDES = {
+      0: ["top","left"], 1: ["top"], 2: ["top"], 3: ["top"], 4: ["top","right"],
+      5: ["right"], 6: ["right"], 7: ["right"], 8: ["right","bottom"],
+      9: ["bottom","left"], 10: ["bottom"], 11: ["bottom"], 12: ["bottom"],
+      14: ["left"], 15: ["left"], 16: ["left"]
+    };
+    const STORAGE_KEY = "squardle_daily_v3";
+    const STATS_KEY = "squardle_stats_v1";
+
+    let secrets = {};
+    let todayTheme = "";
+    let currentSide = "top";
+    let guessesLeft = 13;
+    let currentGuess = "";
+    let solved = { top:false, right:false, bottom:false, left:false };
+    let tileLetters = Array(17).fill("");
+    let tileColors = Array(17).fill("empty");
+    let sideKeyColors = { top: {}, right: {}, bottom: {}, left: {} };
+    let sideGuessCounts = { top: 0, right: 0, bottom: 0, left: 0 };
+    let gameOver = false;
+    let won = false;
+    let statsRecorded = false;
+    let today = "";
+
+    const boardEl = document.getElementById("board");
+    const guessRow = document.getElementById("guessRow");
+    const messageEl = document.getElementById("message");
+    const guessesLeftEl = document.getElementById("guessesLeft");
+    const currentSideLabel = document.getElementById("currentSideLabel");
+    const sideBtns = document.querySelectorAll(".side-btn");
+    const helpModal = document.getElementById("helpModal");
+    const endModal = document.getElementById("endModal");
+
+    function localDateKey() {
+      const d = new Date();
+      return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    }
+    function puzzleIndexForDate(key) {
+      let h = 2166136261;
+      for (let i = 0; i < key.length; i++) {
+        h ^= key.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return Math.abs(h) % PUZZLES.length;
+    }
+    function saveState() {
+      const state = {
+        date: today, guessesLeft, currentSide, currentGuess, solved,
+        tileLetters, tileColors, sideKeyColors, sideGuessCounts,
+        gameOver, won, statsRecorded
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    }
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (!s || s.date !== today) return null;
+        return s;
+      } catch (e) { return null; }
+    }
+    function applyPuzzleWords() {
+      const p = PUZZLES[puzzleIndexForDate(today)];
+      secrets = { top: p[0], right: p[1], bottom: p[2], left: p[3] };
+      todayTheme = p[4] || "";
+    }
+    function startFresh() {
+      applyPuzzleWords();
+      guessesLeft = 13; currentGuess = "";
+      solved = { top:false, right:false, bottom:false, left:false };
+      tileLetters = Array(17).fill("");
+      tileColors = Array(17).fill("empty");
+      sideKeyColors = { top: {}, right: {}, bottom: {}, left: {} };
+      sideGuessCounts = { top: 0, right: 0, bottom: 0, left: 0 };
+      gameOver = false; won = false; statsRecorded = false; currentSide = "top";
+    }
+    function restore(s) {
+      applyPuzzleWords();
+      guessesLeft = s.guessesLeft;
+      currentSide = s.currentSide || "top";
+      currentGuess = s.currentGuess || "";
+      solved = s.solved;
+      tileLetters = s.tileLetters;
+      tileColors = s.tileColors;
+      sideKeyColors = s.sideKeyColors;
+      sideGuessCounts = s.sideGuessCounts || { top: 0, right: 0, bottom: 0, left: 0 };
+      gameOver = !!s.gameOver; won = !!s.won; statsRecorded = !!s.statsRecorded;
+    }
+    function initPuzzle() {
+      today = localDateKey();
+      const saved = loadState();
+      if (saved) restore(saved);
+      else { startFresh(); saveState(); }
+      updateUI();
+      hideMessage();
+      if (gameOver) showEnd(won);
+    }
+    function updateUI() {
+      for (let i = 0; i < 17; i++) {
+        const el = boardEl.querySelector('[data-pos="' + i + '"]');
+        if (!el) continue;
+        el.textContent = tileLetters[i];
+        el.className = "tile " + (tileColors[i] || "empty");
+        if (tileLetters[i]) el.classList.add("filled");
+      }
+      document.querySelectorAll(".tile[data-pos]").forEach(t => t.classList.remove("selected-side"));
+      SIDE_POS[currentSide].forEach(pos => {
+        const el = boardEl.querySelector('[data-pos="' + pos + '"]');
+        if (el) el.classList.add("selected-side");
+      });
+      sideBtns.forEach(btn => {
+        const s = btn.dataset.side;
+        btn.classList.toggle("active", s === currentSide);
+        btn.classList.toggle("solved", solved[s]);
+      });
+      guessRow.querySelectorAll(".guess-tile").forEach((t,i) => { t.textContent = currentGuess[i] || ""; });
+      guessesLeftEl.textContent = guessesLeft;
+      currentSideLabel.textContent = currentSide.toUpperCase();
+      ["top","right","bottom","left"].forEach(function(side) {
+        const el = document.getElementById("count-" + side);
+        const n = sideGuessCounts[side] || 0;
+        el.textContent = n;
+        el.classList.toggle("hidden", n === 0);
+      });
+      renderKeyboard();
+    }
+    function renderKeyboard() {
+      const rows = ["qwertyuiop".split(""), "asdfghjkl".split(""), ["Enter", ..."zxcvbnm".split(""), "Back"]];
+      const kb = document.getElementById("keyboard");
+      kb.innerHTML = "";
+      rows.forEach(row => {
+        const rowEl = document.createElement("div");
+        rowEl.className = "kb-row";
+        row.forEach(k => {
+          const btn = document.createElement("button");
+          btn.className = "key" + (k.length > 1 ? " wide" : "");
+          btn.textContent = k === "Back" ? "⌫" : k;
+          const col = sideKeyColors[currentSide][k.toUpperCase()];
+          if (col) btn.classList.add(col);
+          btn.addEventListener("click", () => handleKey(k));
+          rowEl.appendChild(btn);
+        });
+        kb.appendChild(rowEl);
+      });
+    }
+    function showMessage(msg, duration) {
+      if (duration === undefined) duration = 1800;
+      messageEl.textContent = msg;
+      messageEl.style.opacity = "1";
+      if (duration) setTimeout(hideMessage, duration);
+    }
+    function hideMessage() { messageEl.style.opacity = "0"; }
+    function evaluateGuess(guess, secret) {
+      const result = Array(5).fill("absent");
+      const secretArr = secret.split("");
+      const guessArr = guess.split("");
+      const used = Array(5).fill(false);
+      for (let i = 0; i < 5; i++) {
+        if (guessArr[i] === secretArr[i]) { result[i] = "correct"; used[i] = true; }
+      }
+      for (let i = 0; i < 5; i++) {
+        if (result[i] === "correct") continue;
+        for (let j = 0; j < 5; j++) {
+          if (!used[j] && guessArr[i] === secretArr[j]) { result[i] = "present"; used[j] = true; break; }
+        }
+      }
+      return result;
+    }
+    function submitGuess() {
+      if (gameOver) {
+        showMessage("Come back tomorrow for a new puzzle");
+        showEnd(won);
+        return;
+      }
+      if (currentGuess.length !== 5) { showMessage("More letters needed"); return; }
+      const guess = currentGuess.toUpperCase();
+      if (!VALID_SET.has(guess)) { showMessage("Not a recognized word"); return; }
+      if (solved[currentSide]) { showMessage("This side is already solved"); return; }
+      const secret = secrets[currentSide];
+      const colors = evaluateGuess(guess, secret);
+      const positions = SIDE_POS[currentSide];
+      for (let i = 0; i < 5; i++) {
+        const pos = positions[i];
+        tileLetters[pos] = guess[i];
+        if (tileColors[pos] !== "correct") tileColors[pos] = colors[i];
+        else if (colors[i] === "correct") tileColors[pos] = "correct";
+      }
+      const rank = { correct: 3, present: 2, absent: 1, empty: 0 };
+      const kc = sideKeyColors[currentSide];
+      for (let i = 0; i < 5; i++) {
+        const ch = guess[i];
+        const c = colors[i];
+        if (!kc[ch] || rank[c] > rank[kc[ch]]) kc[ch] = c;
+      }
+      guessesLeft--;
+      sideGuessCounts[currentSide]++;
+      currentGuess = "";
+      if (guess === secret) {
+        solved[currentSide] = true;
+        positions.forEach((pos, i) => { tileLetters[pos] = secret[i]; tileColors[pos] = "correct"; });
+        showMessage("Side solved!");
+      }
+      if (Object.values(solved).every(Boolean)) {
+        gameOver = true; won = true; saveState(); updateUI();
+        setTimeout(function(){ showEnd(true); }, 600); return;
+      }
+      if (guessesLeft <= 0) {
+        gameOver = true; won = false; saveState(); updateUI();
+        setTimeout(function(){ showEnd(false); }, 600); return;
+      }
+      saveState(); updateUI();
+    }
+    function defaultStats() {
+      return { played:0, wins:0, currentStreak:0, maxStreak:0, winGuessSum:0,
+        sides:{top:0,right:0,bottom:0,left:0}, lastPlayedDate:"", lastWinDate:"" };
+    }
+    function loadStats() {
+      try {
+        const raw = localStorage.getItem(STATS_KEY);
+        if (!raw) return defaultStats();
+        return Object.assign(defaultStats(), JSON.parse(raw));
+      } catch (e) { return defaultStats(); }
+    }
+    function saveStats(st) { try { localStorage.setItem(STATS_KEY, JSON.stringify(st)); } catch (e) {} }
+    function yesterdayOf(key) {
+      const p = key.split("-").map(Number);
+      const d = new Date(p[0], p[1]-1, p[2]);
+      d.setDate(d.getDate()-1);
+      return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    }
+    function recordStatsIfNeeded(didWin) {
+      if (statsRecorded) return;
+      const st = loadStats();
+      if (st.lastPlayedDate === today) { statsRecorded = true; saveState(); return; }
+      st.played += 1;
+      ["top","right","bottom","left"].forEach(function(side){ if (solved[side]) st.sides[side] += 1; });
+      if (didWin) {
+        st.wins += 1;
+        st.winGuessSum += (13 - guessesLeft);
+        if (st.lastWinDate === yesterdayOf(today)) st.currentStreak += 1;
+        else st.currentStreak = 1;
+        st.lastWinDate = today;
+        if (st.currentStreak > st.maxStreak) st.maxStreak = st.currentStreak;
+      } else st.currentStreak = 0;
+      st.lastPlayedDate = today;
+      saveStats(st); statsRecorded = true; saveState();
+    }
+    function renderStats() {
+      const st = loadStats();
+      document.getElementById("statStreak").textContent = st.currentStreak;
+      document.getElementById("statBest").textContent = st.maxStreak;
+      document.getElementById("statAvg").textContent = st.wins ? (st.winGuessSum / st.wins).toFixed(1) : "—";
+      const maxSide = Math.max(st.sides.top, st.sides.right, st.sides.bottom, st.sides.left, 1);
+      ["top","right","bottom","left"].forEach(function(side) {
+        const n = st.sides[side] || 0;
+        document.getElementById("n-" + side).textContent = n;
+        document.getElementById("bar-" + side).style.width = Math.round((n / maxSide) * 100) + "%";
+      });
+    }
+    function showStats() {
+      renderStats();
+      document.getElementById("statsModal").classList.add("show");
+    }
+    function showEnd(didWin) {
+      recordStatsIfNeeded(didWin);
+      const title = document.getElementById("endTitle");
+      const body = document.getElementById("endBody");
+      if (didWin) {
+        title.textContent = "Congratulations!";
+        title.style.color = "var(--correct)";
+        const used = 13 - guessesLeft;
+        let extra = "";
+        if (used <= 8) extra = "That's amazing!";
+        else if (used >= 13) extra = "Barely got it today, but you got it.";
+        body.innerHTML = "<p>You solved today's square in " + used + " guess" + (used===1?"":"es") + ".</p>" +
+          (extra ? "<p>" + extra + "</p>" : "") +
+          (todayTheme ? "<p class='reveal'>Theme: " + todayTheme + "</p>" : "");
+      } else {
+        title.textContent = "Better luck next time";
+        title.style.color = "#f87171";
+        function line(label, side) {
+          const n = sideGuessCounts[side] || 0;
+          return "<p><strong>" + label + ":</strong> " + secrets[side] + " (" + n + " guess" + (n===1?"":"es") + ")</p>";
+        }
+        body.innerHTML =
+          "<p class='reveal'>Today's square was:</p>" +
+          line("Top","top") + line("Right","right") + line("Bottom","bottom") + line("Left","left") +
+          (todayTheme ? "<p class='reveal'>Theme: <em>" + todayTheme + "</em></p>" : "");
+      }
+      endModal.classList.add("show");
+    }
+    function handleKey(key) {
+      if (gameOver) { if (key === "Enter") showEnd(won); return; }
+      if (key === "Enter") submitGuess();
+      else if (key === "Back" || key === "Backspace") {
+        currentGuess = currentGuess.slice(0, -1); updateUI(); saveState();
+      } else if (/^[a-zA-Z]$/.test(key) && currentGuess.length < 5) {
+        currentGuess += key.toUpperCase(); updateUI();
+      }
+    }
+    document.addEventListener("keydown", function(e) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (helpModal.classList.contains("show") || endModal.classList.contains("show") ||
+          document.getElementById("statsModal").classList.contains("show")) return;
+      if (e.key === "Enter") handleKey("Enter");
+      else if (e.key === "Backspace") { e.preventDefault(); handleKey("Back"); }
+      else if (/^[a-zA-Z]$/.test(e.key)) handleKey(e.key);
+    });
+    function selectSide(side) {
+      if (!SIDE_POS[side] || side === currentSide) return;
+      currentSide = side; currentGuess = ""; updateUI(); saveState();
+    }
+    function sideFromTile(pos) {
+      const sides = POS_SIDES[pos];
+      if (!sides || !sides.length) return null;
+      if (sides.length === 1) return sides[0];
+      if (sides[0] === currentSide) return sides[1];
+      if (sides[1] === currentSide) return sides[0];
+      return sides[0];
+    }
+    sideBtns.forEach(function(btn){ btn.addEventListener("click", function(){ selectSide(btn.dataset.side); }); });
+    boardEl.querySelectorAll(".tile[data-pos]").forEach(function(tile) {
+      tile.addEventListener("click", function() {
+        const side = sideFromTile(tile.dataset.pos);
+        if (side) selectSide(side);
+      });
+    });
+    document.getElementById("helpBtn").addEventListener("click", function(){ helpModal.classList.add("show"); });
+    document.getElementById("closeHelp").addEventListener("click", function(){ helpModal.classList.remove("show"); });
+    document.getElementById("closeEndBtn").addEventListener("click", function(){ endModal.classList.remove("show"); });
+    document.getElementById("statsBtn").addEventListener("click", showStats);
+    document.getElementById("closeStats").addEventListener("click", function(){
+      document.getElementById("statsModal").classList.remove("show");
+    });
+    loadWordList().then(function() {
+      initPuzzle();
+      if (!localStorage.getItem("squardle_seen")) {
+        helpModal.classList.add("show");
+        localStorage.setItem("squardle_seen", "1");
+      }
+    }).catch(function() {
+      document.getElementById("message").style.opacity = "1";
+      document.getElementById("message").textContent = "Could not load word list. Refresh to try again.";
+    });

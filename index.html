@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Squardle – Four Words, One Square</title>
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --tile-border: #3a3a3c;
+      --correct: #1b6714;
+      --present: #b59f3b;
+      --absent: #3b2828;
+      --text: #ffffff;
+      --key-bg: #818384;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px;
+      overflow-x: hidden;
+    }
+    header {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 4px;
+      border-bottom: 1px solid #3a3a3c;
+      margin-bottom: 12px;
+    }
+    h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: 0.05em; }
+    .icon-btn {
+      background: none; border: none; color: var(--text);
+      font-size: 1.4rem; cursor: pointer; padding: 4px 8px;
+    }
+    .icon-btn svg { display: block; }
+    .status { font-size: 0.9rem; color: #a0a0a0; margin-bottom: 8px; text-align: center; }
+    .status strong { color: #fff; }
+    .board-wrap { margin: 8px 0 14px; position: relative; padding: 22px; }
+    .side-count {
+      position: absolute; color: #6b6b6d; font-size: 0.85rem; font-weight: 600;
+      line-height: 1; pointer-events: none; user-select: none;
+    }
+    .side-count.hidden { visibility: hidden; }
+    .side-count.top { top: 2px; left: 50%; transform: translateX(-50%); }
+    .side-count.right { right: 2px; top: 50%; transform: translateY(-50%); }
+    .side-count.bottom { bottom: 2px; left: 50%; transform: translateX(-50%); }
+    .side-count.left { left: 2px; top: 50%; transform: translateY(-50%); }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(5, 52px);
+      grid-template-rows: repeat(5, 52px);
+      gap: 8px;
+    }
+    @media (max-width: 360px) {
+      .board {
+        grid-template-columns: repeat(5, 46px);
+        grid-template-rows: repeat(5, 46px);
+        gap: 6px;
+      }
+    }
+    .tile {
+      width: 100%; height: 100%;
+      border: 2px solid var(--tile-border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 700; text-transform: uppercase;
+      background: transparent;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      user-select: none;
+    }
+    .tile.ghost { visibility: hidden; border: none; }
+    .tile.empty { border-color: #3a3a3c; }
+    .tile.filled { border-color: #565758; }
+    .tile.correct { background: var(--correct); border-color: var(--correct); }
+    .tile.present { background: var(--present); border-color: var(--present); }
+    .tile.absent { background: var(--absent); border-color: var(--absent); }
+    .tile.selected-side {
+      box-shadow: 0 0 0 2px #fff, 0 0 8px rgba(255,255,255,0.3);
+      transform: scale(1.05);
+    }
+    .tile[data-pos] { cursor: pointer; }
+    .controls {
+      width: 100%; max-width: 500px;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      margin-bottom: 12px;
+    }
+    .side-btns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .side-btn {
+      background: #2a2a2c; border: 1px solid #565758; color: #fff;
+      padding: 6px 12px; border-radius: 4px; font-size: 0.8rem;
+      font-weight: 600; cursor: pointer; text-transform: uppercase;
+    }
+    .side-btn.active { background: #565758; border-color: #fff; }
+    .side-btn.solved { background: var(--correct); border-color: var(--correct); }
+    .guess-row { display: flex; gap: 4px; }
+    .guess-tile {
+      width: 40px; height: 40px; border: 2px solid #565758;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; font-weight: 700; background: transparent;
+    }
+    .message {
+      min-height: 24px; font-size: 0.95rem; font-weight: 600;
+      text-align: center; margin: 4px 0 8px; transition: opacity 0.3s;
+    }
+    .keyboard { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 12px; }
+    .kb-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 7px; }
+    .key {
+      background: var(--key-bg); border: none; border-radius: 4px; color: #fff;
+      font-weight: 700; font-size: 0.85rem; height: 52px; min-width: 28px;
+      padding: 0 8px; cursor: pointer; text-transform: uppercase;
+      display: flex; align-items: center; justify-content: center; user-select: none;
+    }
+    .key.wide { min-width: 48px; font-size: 0.7rem; }
+    .key.correct { background: var(--correct); }
+    .key.present { background: var(--present); }
+    .key.absent { background: #3b2828; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100; padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #1a1a1b; border-radius: 8px; max-width: 420px; width: 100%;
+      padding: 20px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal h2 { margin-bottom: 12px; font-size: 1.3rem; }
+    .modal p, .modal li { font-size: 0.95rem; line-height: 1.45; margin-bottom: 8px; color: #d0d0d0; }
+    .modal ul { padding-left: 20px; margin-bottom: 12px; }
+    .modal .close-btn {
+      display: block; margin: 16px auto 0; background: var(--correct);
+      border: none; color: #fff; padding: 10px 24px; border-radius: 4px;
+      font-weight: 700; cursor: pointer;
+    }
+    .example-tiles { display: flex; gap: 4px; margin: 6px 0 10px; }
+    .ex-tile {
+      width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1.1rem; border-radius: 3px;
+    }
+    .ex-tile.correct { background: var(--correct); }
+    .ex-tile.present { background: var(--present); }
+    .ex-tile.absent { background: var(--absent); }
+    .win-loss { text-align: center; font-size: 1.4rem; font-weight: 700; margin: 12px 0; }
+    #endBody, #endBody p { text-align: center; }
+    .reveal { font-size: 0.9rem; color: #aaa; margin-top: 8px; }
+    .tomorrow { color: #fbbf24; font-weight: 700; text-align: center; margin-top: 10px; }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin: 12px 0 18px; text-align: center;
+    }
+    .stat-box .num { font-size: 1.6rem; font-weight: 800; }
+    .stat-box .lbl { font-size: 0.72rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+    .side-bar-row {
+      display: grid; grid-template-columns: 52px 1fr 36px;
+      align-items: center; gap: 8px; margin: 6px 0;
+      font-size: 0.8rem; color: #ccc; text-transform: uppercase;
+    }
+    .bar-track { background: #3a3a3c; height: 14px; border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; background: var(--correct); width: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="icon-btn" id="helpBtn" title="How to play">?</button>
+    <h1>SQUARDLE</h1>
+    <button class="icon-btn" id="statsBtn" title="Statistics" aria-label="Statistics">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <rect x="3" y="12" width="4" height="9" rx="1"/>
+        <rect x="10" y="6" width="4" height="15" rx="1"/>
+        <rect x="17" y="2" width="4" height="19" rx="1"/>
+      </svg>
+    </button>
+  </header>
+  <div class="status">
+    Guesses left: <strong id="guessesLeft">13</strong> &nbsp;|&nbsp;
+    Side: <strong id="currentSideLabel">TOP</strong>
+  </div>
+  <div class="message" id="message"></div>
+  <div class="board-wrap">
+    <span class="side-count top hidden" id="count-top">0</span>
+    <span class="side-count right hidden" id="count-right">0</span>
+    <span class="side-count bottom hidden" id="count-bottom">0</span>
+    <span class="side-count left hidden" id="count-left">0</span>
+    <div class="board" id="board">
+      <div class="tile empty" data-pos="0"></div>
+      <div class="tile empty" data-pos="1"></div>
+      <div class="tile empty" data-pos="2"></div>
+      <div class="tile empty" data-pos="3"></div>
+      <div class="tile empty" data-pos="4"></div>
+      <div class="tile empty" data-pos="14"></div>
+      <div class="tile ghost"></div><div class="tile ghost"></div><div class="tile ghost"></div>
+      <div class="tile empty" data-pos="5"></div>
+      <div class="tile empty" data-pos="15"></div>
+      <div class="tile ghost"></div><div class="tile ghost"></div><div class="tile ghost"></div>
+      <div class="tile empty" data-pos="6"></div>
+      <div class="tile empty" data-pos="16"></div>
+      <div class="tile ghost"></div><div class="tile ghost"></div><div class="tile ghost"></div>
+      <div class="tile empty" data-pos="7"></div>
+      <div class="tile empty" data-pos="9"></div>
+      <div class="tile empty" data-pos="10"></div>
+      <div class="tile empty" data-pos="11"></div>
+      <div class="tile empty" data-pos="12"></div>
+      <div class="tile empty" data-pos="8"></div>
+    </div>
+  </div>
+  <div class="controls">
+    <div class="side-btns">
+      <button class="side-btn active" data-side="top">Top</button>
+      <button class="side-btn" data-side="right">Right</button>
+      <button class="side-btn" data-side="bottom">Bottom</button>
+      <button class="side-btn" data-side="left">Left</button>
+    </div>
+    <div class="guess-row" id="guessRow">
+      <div class="guess-tile" data-g="0"></div>
+      <div class="guess-tile" data-g="1"></div>
+      <div class="guess-tile" data-g="2"></div>
+      <div class="guess-tile" data-g="3"></div>
+      <div class="guess-tile" data-g="4"></div>
+    </div>
+  </div>
+  <div class="keyboard" id="keyboard"></div>
+  <div class="modal-overlay" id="helpModal">
+    <div class="modal">
+      <h2>How to play Squardle</h2>
+      <p>Guess four 5-letter words that form a square. The corners are shared between neighboring words and the answers are all loosely connected by a similar theme.</p>
+      <ul>
+        <li><strong>Top</strong> reads left → right</li>
+        <li><strong>Right</strong> reads top → bottom</li>
+        <li><strong>Bottom</strong> reads left → right</li>
+        <li><strong>Left</strong> reads top → bottom</li>
+      </ul>
+      <p>Select a side, type a guess, and press Enter. You get <strong>13 guesses</strong> total.</p>
+      <p>A new square is available each day.</p>
+      <p>Colors work like this:</p>
+      <div class="example-tiles">
+        <div class="ex-tile correct">W</div>
+        <div class="ex-tile present">O</div>
+        <div class="ex-tile absent">R</div>
+      </div>
+      <p><span style="color:var(--correct)">Green</span> = correct letter &amp; position<br>
+         <span style="color:var(--present)">Yellow</span> = letter is in the word but wrong spot<br>
+         Gray = letter not in that word</p>
+      <button class="close-btn" id="closeHelp">Got it</button>
+    </div>
+  </div>
+  <div class="modal-overlay" id="statsModal">
+    <div class="modal">
+      <h2 style="text-align:center">Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-box"><div class="num" id="statStreak">0</div><div class="lbl">Current streak</div></div>
+        <div class="stat-box"><div class="num" id="statBest">0</div><div class="lbl">Best streak</div></div>
+        <div class="stat-box"><div class="num" id="statAvg">—</div><div class="lbl">Avg guesses</div></div>
+      </div>
+      <p style="text-align:center;margin-bottom:8px"><strong>Sides solved</strong></p>
+      <div class="side-bar-row"><span>Top</span><div class="bar-track"><div class="bar-fill" id="bar-top"></div></div><span id="n-top">0</span></div>
+      <div class="side-bar-row"><span>Right</span><div class="bar-track"><div class="bar-fill" id="bar-right"></div></div><span id="n-right">0</span></div>
+      <div class="side-bar-row"><span>Bottom</span><div class="bar-track"><div class="bar-fill" id="bar-bottom"></div></div><span id="n-bottom">0</span></div>
+      <div class="side-bar-row"><span>Left</span><div class="bar-track"><div class="bar-fill" id="bar-left"></div></div><span id="n-left">0</span></div>
+      <button class="close-btn" id="closeStats">Close</button>
+    </div>
+  </div>
+  <div class="modal-overlay" id="endModal">
+    <div class="modal">
+      <div class="win-loss" id="endTitle"></div>
+      <div id="endBody"></div>
+      <p class="tomorrow">Come back tomorrow for a new puzzle</p>
+      <button class="close-btn" id="closeEndBtn">Close</button>
+    </div>
+  </div>
+    <script src="puzzles.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
