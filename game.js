@@ -27,7 +27,7 @@ let VALID_SET = new Set();
       9: ["bottom","left"], 10: ["bottom"], 11: ["bottom"], 12: ["bottom"],
       14: ["left"], 15: ["left"], 16: ["left"]
     };
-    const STORAGE_KEY = "squardle_daily_v3";
+    const STORAGE_KEY = "squardle_daily_v4";
     const STATS_KEY = "squardle_stats_v1";
 
     let secrets = {};
@@ -40,6 +40,7 @@ let VALID_SET = new Set();
     let tileColors = Array(17).fill("empty");
     let sideKeyColors = { top: {}, right: {}, bottom: {}, left: {} };
     let sideGuessCounts = { top: 0, right: 0, bottom: 0, left: 0 };
+    let sideHistory = { top: [], right: [], bottom: [], left: [] };
     let gameOver = false;
     let won = false;
     let statsRecorded = false;
@@ -54,6 +55,9 @@ let VALID_SET = new Set();
     const helpModal = document.getElementById("helpModal");
     const endModal = document.getElementById("endModal");
 
+    function emptyHistory() {
+      return { top: [], right: [], bottom: [], left: [] };
+    }
     function localDateKey() {
       const d = new Date();
       return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
@@ -69,7 +73,7 @@ let VALID_SET = new Set();
     function saveState() {
       const state = {
         date: today, guessesLeft, currentSide, currentGuess, solved,
-        tileLetters, tileColors, sideKeyColors, sideGuessCounts,
+        tileLetters, tileColors, sideKeyColors, sideGuessCounts, sideHistory,
         gameOver, won, statsRecorded
       };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
@@ -96,6 +100,7 @@ let VALID_SET = new Set();
       tileColors = Array(17).fill("empty");
       sideKeyColors = { top: {}, right: {}, bottom: {}, left: {} };
       sideGuessCounts = { top: 0, right: 0, bottom: 0, left: 0 };
+      sideHistory = emptyHistory();
       gameOver = false; won = false; statsRecorded = false; currentSide = "top";
     }
     function restore(s) {
@@ -108,6 +113,10 @@ let VALID_SET = new Set();
       tileColors = s.tileColors;
       sideKeyColors = s.sideKeyColors;
       sideGuessCounts = s.sideGuessCounts || { top: 0, right: 0, bottom: 0, left: 0 };
+      sideHistory = s.sideHistory || emptyHistory();
+      ["top","right","bottom","left"].forEach(function(side) {
+        if (!Array.isArray(sideHistory[side])) sideHistory[side] = [];
+      });
       gameOver = !!s.gameOver; won = !!s.won; statsRecorded = !!s.statsRecorded;
     }
     function initPuzzle() {
@@ -119,7 +128,19 @@ let VALID_SET = new Set();
       hideMessage();
       if (gameOver) showEnd(won);
     }
+    function paintCurrentSideGuess() {
+      const hist = sideHistory[currentSide];
+      if (!hist || !hist.length) return;
+      const last = hist[hist.length - 1];
+      const positions = SIDE_POS[currentSide];
+      for (let i = 0; i < 5; i++) {
+        const pos = positions[i];
+        tileLetters[pos] = last.word[i];
+        tileColors[pos] = last.colors[i];
+      }
+    }
     function updateUI() {
+      paintCurrentSideGuess();
       for (let i = 0; i < 17; i++) {
         const el = boardEl.querySelector('[data-pos="' + i + '"]');
         if (!el) continue;
@@ -190,6 +211,38 @@ let VALID_SET = new Set();
       }
       return result;
     }
+    function hintViolation(guess, side) {
+      const hist = sideHistory[side] || [];
+      if (!hist.length) return null;
+      const locked = [null, null, null, null, null];
+      const required = {};
+      hist.forEach(function(entry) {
+        const counts = {};
+        for (let i = 0; i < 5; i++) {
+          const ch = entry.word[i];
+          const c = entry.colors[i];
+          if (c === "correct") locked[i] = ch;
+          if (c === "correct" || c === "present") counts[ch] = (counts[ch] || 0) + 1;
+        }
+        Object.keys(counts).forEach(function(ch) {
+          required[ch] = Math.max(required[ch] || 0, counts[ch]);
+        });
+      });
+      for (let i = 0; i < 5; i++) {
+        if (locked[i] && guess[i] !== locked[i]) {
+          return "Letter " + (i + 1) + " must be " + locked[i];
+        }
+      }
+      const guessCounts = {};
+      for (let i = 0; i < 5; i++) guessCounts[guess[i]] = (guessCounts[guess[i]] || 0) + 1;
+      const missing = Object.keys(required).filter(function(ch) {
+        return (guessCounts[ch] || 0) < required[ch];
+      });
+      if (missing.length) {
+        return "Guess must include " + missing.join(", ");
+      }
+      return null;
+    }
     function submitGuess() {
       if (gameOver) {
         showMessage("Come back tomorrow for a new puzzle");
@@ -200,14 +253,16 @@ let VALID_SET = new Set();
       const guess = currentGuess.toUpperCase();
       if (!VALID_SET.has(guess)) { showMessage("Not a recognized word"); return; }
       if (solved[currentSide]) { showMessage("This side is already solved"); return; }
+      const hintErr = hintViolation(guess, currentSide);
+      if (hintErr) { showMessage(hintErr, 2200); return; }
       const secret = secrets[currentSide];
       const colors = evaluateGuess(guess, secret);
       const positions = SIDE_POS[currentSide];
+      sideHistory[currentSide].push({ word: guess, colors: colors.slice() });
       for (let i = 0; i < 5; i++) {
         const pos = positions[i];
         tileLetters[pos] = guess[i];
-        if (tileColors[pos] !== "correct") tileColors[pos] = colors[i];
-        else if (colors[i] === "correct") tileColors[pos] = "correct";
+        tileColors[pos] = colors[i];
       }
       const rank = { correct: 3, present: 2, absent: 1, empty: 0 };
       const kc = sideKeyColors[currentSide];
