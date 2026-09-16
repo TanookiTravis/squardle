@@ -142,7 +142,7 @@ let VALID_SET = new Set();
       return window.matchMedia("(max-width: 360px)").matches ? 46 : 52;
     }
     function renderSideHistory() {
-      const nearest = Math.round(tilePx() * 0.75);
+      const nearest = Math.round(tilePx() * 0.75 * 0.85);
       ["top","right","bottom","left"].forEach(function(side) {
         const el = document.getElementById("history-" + side);
         if (!el) return;
@@ -154,7 +154,7 @@ let VALID_SET = new Set();
         if (hist.length < 2) return;
         const older = hist.slice(0, -1).slice().reverse();
         older.forEach(function(entry, i) {
-          const size = Math.max(12, nearest - i * 5);
+          const size = Math.max(12, nearest - i * 4);
           const word = document.createElement("div");
           word.className = "history-word";
           word.style.setProperty("--h-size", size + "px");
