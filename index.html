@@ -21,6 +21,9 @@
       --absent: #3b1616;
       --text: #ffffff;
       --key-bg: #818384;
+      --tile-size: 52px;
+      --tile-gap: 8px;
+      --board-pad: 22px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -52,7 +55,7 @@
     .icon-btn svg { display: block; }
     .status { font-size: 0.9rem; color: #a0a0a0; margin-bottom: 8px; text-align: center; }
     .status strong { color: #fff; }
-    .board-wrap { margin: 8px 0 14px; position: relative; padding: 22px; }
+    .board-wrap { margin: 8px 0 14px; position: relative; padding: var(--board-pad); }
     .side-count {
       position: absolute; color: #6b6b6d; font-size: 0.85rem; font-weight: 600;
       line-height: 1; pointer-events: none; user-select: none;
@@ -64,15 +67,80 @@
     .side-count.left { left: 2px; top: 50%; transform: translateY(-50%); }
     .board {
       display: grid;
-      grid-template-columns: repeat(5, 52px);
-      grid-template-rows: repeat(5, 52px);
-      gap: 8px;
+      grid-template-columns: repeat(5, var(--tile-size));
+      grid-template-rows: repeat(5, var(--tile-size));
+      gap: var(--tile-gap);
     }
+    .history-stack {
+      position: absolute;
+      display: none;
+      pointer-events: none;
+      gap: 4px;
+      align-items: center;
+      z-index: 2;
+    }
+    .history-stack.visible { display: flex; }
+    .history-stack.top {
+      top: calc(var(--board-pad) + var(--tile-size) + var(--tile-gap));
+      left: 50%;
+      transform: translateX(-50%);
+      flex-direction: column;
+      max-height: calc(3 * var(--tile-size) + 2 * var(--tile-gap));
+      overflow: hidden;
+    }
+    .history-stack.bottom {
+      bottom: calc(var(--board-pad) + var(--tile-size) + var(--tile-gap));
+      left: 50%;
+      transform: translateX(-50%);
+      flex-direction: column-reverse;
+      max-height: calc(3 * var(--tile-size) + 2 * var(--tile-gap));
+      overflow: hidden;
+    }
+    .history-stack.left {
+      left: calc(var(--board-pad) + var(--tile-size) + var(--tile-gap));
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: row;
+      max-width: calc(3 * var(--tile-size) + 2 * var(--tile-gap));
+      overflow: hidden;
+    }
+    .history-stack.right {
+      right: calc(var(--board-pad) + var(--tile-size) + var(--tile-gap));
+      top: 50%;
+      transform: translateY(-50%);
+      flex-direction: row-reverse;
+      max-width: calc(3 * var(--tile-size) + 2 * var(--tile-gap));
+      overflow: hidden;
+    }
+    .history-word {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+    .history-stack.left .history-word,
+    .history-stack.right .history-word {
+      flex-direction: column;
+    }
+    .history-tile {
+      width: var(--h-size);
+      height: var(--h-size);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: calc(var(--h-size) * 0.55);
+      line-height: 1;
+      color: #fff;
+      border-radius: 2px;
+    }
+    .history-tile.correct { background: var(--correct); }
+    .history-tile.present { background: var(--present); }
+    .history-tile.absent { background: var(--absent); }
     @media (max-width: 360px) {
-      .board {
-        grid-template-columns: repeat(5, 46px);
-        grid-template-rows: repeat(5, 46px);
-        gap: 6px;
+      :root {
+        --tile-size: 46px;
+        --tile-gap: 6px;
       }
     }
     .tile {
@@ -208,6 +276,10 @@
     <span class="side-count right hidden" id="count-right">0</span>
     <span class="side-count bottom hidden" id="count-bottom">0</span>
     <span class="side-count left hidden" id="count-left">0</span>
+    <div class="history-stack top" id="history-top"></div>
+    <div class="history-stack right" id="history-right"></div>
+    <div class="history-stack bottom" id="history-bottom"></div>
+    <div class="history-stack left" id="history-left"></div>
     <div class="board" id="board">
       <div class="tile empty" data-pos="0"></div>
       <div class="tile empty" data-pos="1"></div>
@@ -264,7 +336,7 @@
         <div class="ex-tile present">O</div>
         <div class="ex-tile absent">R</div>
       </div>
-      <p><span style="color:var(--correct)">Green</span> = correct letter & position<br>
+      <p><span style="color:var(--correct)">Green</span> = correct letter &amp; position<br>
          <span style="color:var(--present)">Yellow</span> = letter is in the word but wrong spot<br>
          <span style="color:#f87171">Red</span> = letter not in that word</p>
       <button class="close-btn" id="closeHelp">Got it</button>

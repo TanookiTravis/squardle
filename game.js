@@ -138,6 +138,37 @@ let VALID_SET = new Set();
         tileColors[pos] = last.colors[i];
       }
     }
+    function tilePx() {
+      return window.matchMedia("(max-width: 360px)").matches ? 46 : 52;
+    }
+    function renderSideHistory() {
+      const nearest = Math.round(tilePx() * 0.75);
+      ["top","right","bottom","left"].forEach(function(side) {
+        const el = document.getElementById("history-" + side);
+        if (!el) return;
+        el.innerHTML = "";
+        const show = side === currentSide;
+        el.classList.toggle("visible", show);
+        if (!show) return;
+        const hist = sideHistory[side] || [];
+        if (hist.length < 2) return;
+        const older = hist.slice(0, -1).slice().reverse();
+        older.forEach(function(entry, i) {
+          const size = Math.max(12, nearest - i * 5);
+          const word = document.createElement("div");
+          word.className = "history-word";
+          word.style.setProperty("--h-size", size + "px");
+          word.style.opacity = "0.75";
+          for (let j = 0; j < 5; j++) {
+            const t = document.createElement("div");
+            t.className = "history-tile " + (entry.colors[j] || "absent");
+            t.textContent = entry.word[j] || "";
+            word.appendChild(t);
+          }
+          el.appendChild(word);
+        });
+      });
+    }
     function updateUI() {
       paintCurrentSideGuess();
       for (let i = 0; i < 17; i++) {
@@ -165,6 +196,7 @@ let VALID_SET = new Set();
         el.textContent = n;
         el.classList.toggle("hidden", n === 0);
       });
+      renderSideHistory();
       renderKeyboard();
     }
     function renderKeyboard() {
@@ -409,6 +441,7 @@ let VALID_SET = new Set();
     document.getElementById("closeStats").addEventListener("click", function(){
       document.getElementById("statsModal").classList.remove("show");
     });
+    window.addEventListener("resize", function(){ renderSideHistory(); });
     loadWordList().then(function() {
       initPuzzle();
       if (!localStorage.getItem("squardle_seen")) {
