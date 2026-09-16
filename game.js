@@ -247,7 +247,7 @@ let VALID_SET = new Set();
         showEnd(won);
         return;
       }
-      if (currentGuess.length !== 5) { showMessage("More letters needed"); return; }
+      if (currentGuess.length !== 5) { showMessage("Too few letters"); return; }
       const guess = currentGuess.toUpperCase();
       if (!VALID_SET.has(guess)) { showMessage("Not a recognized word"); return; }
       if (solved[currentSide]) { showMessage("This side is already solved"); return; }
