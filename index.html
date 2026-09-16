@@ -119,17 +119,28 @@
       text-align: center; margin: 4px 0 8px; transition: opacity 0.3s;
     }
     .keyboard { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 12px; }
-    .kb-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 7px; }
+    .kb-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 6px; }
     .key {
-      background: var(--key-bg); border: none; border-radius: 4px; color: #fff;
-      font-weight: 700; font-size: 0.85rem; height: 52px; min-width: 28px;
-      padding: 0 8px; cursor: pointer; text-transform: uppercase;
+      background: var(--key-bg); border: none; border-radius: 50%; color: #fff;
+      font-weight: 700; font-size: 0.8rem; width: 30px; height: 35px;
+      min-width: 30px; padding: 0; cursor: pointer; text-transform: uppercase;
       display: flex; align-items: center; justify-content: center; user-select: none;
+      flex-shrink: 0;
     }
-    .key.wide { min-width: 48px; font-size: 0.7rem; }
+    .key.wide { width: auto; min-width: 52px; height: 35px; border-radius: 10px; font-size: 0.65rem; padding: 0 8px; }
     .key.correct { background: var(--correct); }
     .key.present { background: var(--present); }
     .key.absent { background: var(--absent); }
+    @media (max-width: 393px) {
+      .kb-row { gap: 2px; }
+    }
+    @media (max-width: 375px) {
+      .kb-row { margin-bottom: 5px; }
+      .key {
+        width: 25px; height: 25px; min-width: 25px; font-size: 0.72rem;
+      }
+      .key.wide { min-width: 44px; height: 25px; font-size: 0.6rem; padding: 0 6px; }
+    }
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.7);
       display: none; align-items: center; justify-content: center;
@@ -189,8 +200,7 @@
     </button>
   </header>
   <div class="status">
-    Guesses left: <strong id="guessesLeft">13</strong> &nbsp;|&nbsp;
-    Side: <strong id="currentSideLabel">TOP</strong>
+    Guesses left: <strong id="guessesLeft">13</strong>
   </div>
   <div class="message" id="message"></div>
   <div class="board-wrap">

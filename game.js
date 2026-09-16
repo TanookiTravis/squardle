@@ -50,7 +50,6 @@ let VALID_SET = new Set();
     const guessRow = document.getElementById("guessRow");
     const messageEl = document.getElementById("message");
     const guessesLeftEl = document.getElementById("guessesLeft");
-    const currentSideLabel = document.getElementById("currentSideLabel");
     const sideBtns = document.querySelectorAll(".side-btn");
     const helpModal = document.getElementById("helpModal");
     const endModal = document.getElementById("endModal");
@@ -160,7 +159,6 @@ let VALID_SET = new Set();
       });
       guessRow.querySelectorAll(".guess-tile").forEach((t,i) => { t.textContent = currentGuess[i] || ""; });
       guessesLeftEl.textContent = guessesLeft;
-      currentSideLabel.textContent = currentSide.toUpperCase();
       ["top","right","bottom","left"].forEach(function(side) {
         const el = document.getElementById("count-" + side);
         const n = sideGuessCounts[side] || 0;
@@ -249,7 +247,7 @@ let VALID_SET = new Set();
         showEnd(won);
         return;
       }
-      if (currentGuess.length !== 5) { showMessage("More letters needed"); return; }
+      if (currentGuess.length !== 5) { showMessage("Too few letters"); return; }
       const guess = currentGuess.toUpperCase();
       if (!VALID_SET.has(guess)) { showMessage("Not a recognized word"); return; }
       if (solved[currentSide]) { showMessage("This side is already solved"); return; }
