@@ -211,7 +211,7 @@ let VALID_SET = new Set();
       }
       return result;
     }
-    function hardModeViolation(guess, side) {
+    function hintViolation(guess, side) {
       const hist = sideHistory[side] || [];
       if (!hist.length) return null;
       const locked = [null, null, null, null, null];
@@ -230,7 +230,7 @@ let VALID_SET = new Set();
       });
       for (let i = 0; i < 5; i++) {
         if (locked[i] && guess[i] !== locked[i]) {
-          return "Hard mode: letter " + (i + 1) + " must be " + locked[i];
+          return "Letter " + (i + 1) + " must be " + locked[i];
         }
       }
       const guessCounts = {};
@@ -239,7 +239,7 @@ let VALID_SET = new Set();
         return (guessCounts[ch] || 0) < required[ch];
       });
       if (missing.length) {
-        return "Hard mode: must include " + missing.join(", ");
+        return "Guess must include " + missing.join(", ");
       }
       return null;
     }
@@ -253,8 +253,8 @@ let VALID_SET = new Set();
       const guess = currentGuess.toUpperCase();
       if (!VALID_SET.has(guess)) { showMessage("Not a recognized word"); return; }
       if (solved[currentSide]) { showMessage("This side is already solved"); return; }
-      const hardErr = hardModeViolation(guess, currentSide);
-      if (hardErr) { showMessage(hardErr, 2200); return; }
+      const hintErr = hintViolation(guess, currentSide);
+      if (hintErr) { showMessage(hintErr, 2200); return; }
       const secret = secrets[currentSide];
       const colors = evaluateGuess(guess, secret);
       const positions = SIDE_POS[currentSide];
