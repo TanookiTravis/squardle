@@ -18,7 +18,7 @@
       --tile-border: #3a3a3c;
       --correct: #1b6714;
       --present: #b59f3b;
-      --absent: #3b2828;
+      --absent: #3b1616;
       --text: #ffffff;
       --key-bg: #818384;
     }
@@ -129,7 +129,7 @@
     .key.wide { min-width: 48px; font-size: 0.7rem; }
     .key.correct { background: var(--correct); }
     .key.present { background: var(--present); }
-    .key.absent { background: #3b2828; }
+    .key.absent { background: var(--absent); }
     .modal-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.7);
       display: none; align-items: center; justify-content: center;
@@ -247,6 +247,7 @@
         <li><strong>Left</strong> reads top → bottom</li>
       </ul>
       <p>Select a side, type a guess, and press Enter. You get <strong>13 guesses</strong> total.</p>
+      <p>Each side uses hard mode on its own: later guesses on that side must keep green letters in place and include every yellow or green letter you have already found there.</p>
       <p>A new square is available each day.</p>
       <p>Colors work like this:</p>
       <div class="example-tiles">
@@ -254,9 +255,9 @@
         <div class="ex-tile present">O</div>
         <div class="ex-tile absent">R</div>
       </div>
-      <p><span style="color:var(--correct)">Green</span> = correct letter & position<br>
+      <p><span style="color:var(--correct)">Green</span> = correct letter &amp; position<br>
          <span style="color:var(--present)">Yellow</span> = letter is in the word but wrong spot<br>
-         Gray = letter not in that word</p>
+         <span style="color:#f87171">Red</span> = letter not in that word</p>
       <button class="close-btn" id="closeHelp">Got it</button>
     </div>
   </div>
