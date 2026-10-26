@@ -61,11 +61,17 @@
       align-items: center;
       margin: 2px 0 6px;
     }
-    .camera-btn { padding: 2px 8px; margin-right: 4px; color: #d7d7d7; }
+    .tool-left {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      flex: 1;
+    }
+    .camera-btn { padding: 2px 8px; margin-right: 4px; color: #d7d7d7; flex-shrink: 0; }
     .camera-btn.active { color: #fbbf24; }
     .theme-btn {
       padding: 2px 8px; margin-left: 4px; color: #fbbf24;
-      visibility: hidden;
+      visibility: hidden; flex-shrink: 0;
     }
     .theme-btn.visible { visibility: visible; }
     body.letters-hidden .tile,
@@ -75,9 +81,9 @@
     .status { font-size: 0.9rem; color: #a0a0a0; margin-bottom: 2px; text-align: center; }
     .status strong { color: #fff; }
     .theme-note {
-      min-height: 1.25em; font-size: 0.9rem; font-weight: 600;
-      text-align: center; margin: 0 0 6px; color: #d0d0d0;
-      visibility: hidden;
+      margin: 0 8px 0 2px; font-size: 0.9rem; font-weight: 600;
+      color: #d0d0d0; visibility: hidden; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
     }
     .theme-note.revealed { visibility: visible; }
     .board-wrap { margin: 8px 0 14px; position: relative; padding: var(--board-pad); }
@@ -302,13 +308,16 @@
     </button>
   </header>
   <div class="tool-row">
-    <button type="button" class="icon-btn theme-btn" id="themeBtn" title="See the theme" aria-label="See the theme">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M9 18h6"/>
-        <path d="M10 22h4"/>
-        <path d="M12 2a7 7 0 0 0-4 12.7c.4.4.6.9.6 1.4V17h6.8v-.9c0-.5.2-1 .6-1.4A7 7 0 0 0 12 2z"/>
-      </svg>
-    </button>
+    <div class="tool-left">
+      <button type="button" class="icon-btn theme-btn" id="themeBtn" title="See the theme" aria-label="See the theme">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 18h6"/>
+          <path d="M10 22h4"/>
+          <path d="M12 2a7 7 0 0 0-4 12.7c.4.4.6.9.6 1.4V17h6.8v-.9c0-.5.2-1 .6-1.4A7 7 0 0 0 12 2z"/>
+        </svg>
+      </button>
+      <div class="theme-note" id="themeNote" aria-live="polite"></div>
+    </div>
     <button class="icon-btn camera-btn" id="cameraBtn" title="Hide letters" aria-label="Hide letters" aria-pressed="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -319,7 +328,6 @@
   <div class="status">
     Guesses left: <strong id="guessesLeft">13</strong>
   </div>
-  <div class="theme-note" id="themeNote" aria-live="polite"></div>
   <div class="message" id="message"></div>
   <div class="board-wrap">
     <span class="side-count top hidden" id="count-top">0</span>
