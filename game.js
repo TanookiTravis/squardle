@@ -178,20 +178,16 @@ let VALID_SET = new Set();
       return ["top","right","bottom","left"].filter(function(side){ return solved[side]; }).length;
     }
     function updateThemeNote() {
+      const btn = document.getElementById("themeBtn");
       const el = document.getElementById("themeNote");
+      const ready = solvedCount() >= 2 && !!todayTheme;
+      if (btn) {
+        btn.classList.toggle("visible", ready);
+        btn.disabled = !ready || themeRevealed;
+      }
       if (!el) return;
-      if (solvedCount() < 2 || !todayTheme) {
-        el.classList.add("hidden");
-        return;
-      }
-      el.classList.remove("hidden");
-      if (themeRevealed) {
-        el.textContent = "Theme: " + todayTheme;
-        el.classList.add("revealed");
-      } else {
-        el.textContent = "See the theme";
-        el.classList.remove("revealed");
-      }
+      el.textContent = todayTheme ? ("Theme: " + todayTheme) : "Theme:";
+      el.classList.toggle("revealed", themeRevealed && !!todayTheme);
     }
     function revealTheme() {
       if (solvedCount() < 2 || themeRevealed || !todayTheme) return;
@@ -207,7 +203,7 @@ let VALID_SET = new Set();
       el.innerHTML = "Define the word <a href=\"" + href + "\" target=\"_blank\" rel=\"noopener\">" + shown + "</a>";
       el.classList.add("show");
       if (defineTimer) clearTimeout(defineTimer);
-      defineTimer = setTimeout(function() { el.classList.remove("show"); }, 10000);
+      defineTimer = setTimeout(function() { el.classList.remove("show"); }, 20000);
     }
     function updateUI() {
       paintCurrentSideGuess();
@@ -529,7 +525,7 @@ let VALID_SET = new Set();
       document.getElementById("statsModal").classList.remove("show");
     });
     document.getElementById("cameraBtn").addEventListener("click", toggleLetters);
-    document.getElementById("themeNote").addEventListener("click", revealTheme);
+    document.getElementById("themeBtn").addEventListener("click", revealTheme);
     try { lettersHidden = localStorage.getItem("squardle_hide_letters") === "1"; } catch (e) {}
     applyLettersHidden();
     window.addEventListener("resize", function(){ renderSideHistory(); });
