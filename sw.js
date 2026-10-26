@@ -1,4 +1,4 @@
-const CACHE = "squardle-v12";
+const CACHE = "squardle-v13";
 const ASSETS = [
   "./",
   "./index.html",
