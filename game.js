@@ -183,15 +183,19 @@ let VALID_SET = new Set();
       const ready = solvedCount() >= 2 && !!todayTheme;
       if (btn) {
         btn.classList.toggle("visible", ready);
-        btn.disabled = !ready || themeRevealed;
+        btn.classList.toggle("active", ready && themeRevealed);
+        btn.disabled = !ready;
+        btn.setAttribute("aria-pressed", themeRevealed ? "true" : "false");
+        btn.title = themeRevealed ? "Hide the theme" : "See the theme";
+        btn.setAttribute("aria-label", btn.title);
       }
       if (!el) return;
       el.textContent = todayTheme ? ("Theme: " + todayTheme) : "Theme:";
-      el.classList.toggle("revealed", themeRevealed && !!todayTheme);
+      el.classList.toggle("revealed", ready && themeRevealed);
     }
-    function revealTheme() {
-      if (solvedCount() < 2 || themeRevealed || !todayTheme) return;
-      themeRevealed = true;
+    function toggleTheme() {
+      if (solvedCount() < 2 || !todayTheme) return;
+      themeRevealed = !themeRevealed;
       updateThemeNote();
       saveState();
     }
@@ -525,7 +529,7 @@ let VALID_SET = new Set();
       document.getElementById("statsModal").classList.remove("show");
     });
     document.getElementById("cameraBtn").addEventListener("click", toggleLetters);
-    document.getElementById("themeBtn").addEventListener("click", revealTheme);
+    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
     try { lettersHidden = localStorage.getItem("squardle_hide_letters") === "1"; } catch (e) {}
     applyLettersHidden();
     window.addEventListener("resize", function(){ renderSideHistory(); });
