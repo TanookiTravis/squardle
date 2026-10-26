@@ -46,6 +46,8 @@ let VALID_SET = new Set();
     let statsRecorded = false;
     let today = "";
     let lettersHidden = false;
+    let themeRevealed = false;
+    let defineTimer = null;
 
     const boardEl = document.getElementById("board");
     const guessRow = document.getElementById("guessRow");
@@ -74,7 +76,7 @@ let VALID_SET = new Set();
       const state = {
         date: today, guessesLeft, currentSide, currentGuess, solved,
         tileLetters, tileColors, sideKeyColors, sideGuessCounts, sideHistory,
-        gameOver, won, statsRecorded
+        gameOver, won, statsRecorded, themeRevealed
       };
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
     }
@@ -102,6 +104,7 @@ let VALID_SET = new Set();
       sideGuessCounts = { top: 0, right: 0, bottom: 0, left: 0 };
       sideHistory = emptyHistory();
       gameOver = false; won = false; statsRecorded = false; currentSide = "top";
+      themeRevealed = false;
     }
     function restore(s) {
       applyPuzzleWords();
@@ -118,6 +121,7 @@ let VALID_SET = new Set();
         if (!Array.isArray(sideHistory[side])) sideHistory[side] = [];
       });
       gameOver = !!s.gameOver; won = !!s.won; statsRecorded = !!s.statsRecorded;
+      themeRevealed = !!s.themeRevealed;
     }
     function initPuzzle() {
       today = localDateKey();
@@ -170,6 +174,41 @@ let VALID_SET = new Set();
         });
       });
     }
+    function solvedCount() {
+      return ["top","right","bottom","left"].filter(function(side){ return solved[side]; }).length;
+    }
+    function updateThemeNote() {
+      const btn = document.getElementById("themeBtn");
+      const el = document.getElementById("themeNote");
+      const ready = solvedCount() >= 2 && !!todayTheme;
+      if (btn) {
+        btn.classList.toggle("visible", ready);
+        btn.classList.toggle("active", ready && themeRevealed);
+        btn.disabled = !ready;
+        btn.setAttribute("aria-pressed", themeRevealed ? "true" : "false");
+        btn.title = themeRevealed ? "Hide the theme" : "See the theme";
+        btn.setAttribute("aria-label", btn.title);
+      }
+      if (!el) return;
+      el.textContent = todayTheme ? ("Theme: " + todayTheme) : "Theme:";
+      el.classList.toggle("revealed", ready && themeRevealed);
+    }
+    function toggleTheme() {
+      if (solvedCount() < 2 || !todayTheme) return;
+      themeRevealed = !themeRevealed;
+      updateThemeNote();
+      saveState();
+    }
+    function showDefine(word) {
+      const el = document.getElementById("defineNote");
+      if (!el || !word) return;
+      const shown = String(word).toUpperCase();
+      const href = "https://www.merriam-webster.com/dictionary/" + encodeURIComponent(shown.toLowerCase());
+      el.innerHTML = "Define the word <a href=\"" + href + "\" target=\"_blank\" rel=\"noopener\">" + shown + "</a>";
+      el.classList.add("show");
+      if (defineTimer) clearTimeout(defineTimer);
+      defineTimer = setTimeout(function() { el.classList.remove("show"); }, 20000);
+    }
     function updateUI() {
       paintCurrentSideGuess();
       for (let i = 0; i < 17; i++) {
@@ -197,6 +236,7 @@ let VALID_SET = new Set();
         el.textContent = n;
         el.classList.toggle("hidden", n === 0);
       });
+      updateThemeNote();
       renderSideHistory();
       renderKeyboard();
     }
@@ -309,6 +349,7 @@ let VALID_SET = new Set();
         solved[currentSide] = true;
         positions.forEach((pos, i) => { tileLetters[pos] = secret[i]; tileColors[pos] = "correct"; });
         showMessage("Side solved!");
+        showDefine(guess);
       }
       if (Object.values(solved).every(Boolean)) {
         gameOver = true; won = true; saveState(); updateUI();
@@ -488,6 +529,7 @@ let VALID_SET = new Set();
       document.getElementById("statsModal").classList.remove("show");
     });
     document.getElementById("cameraBtn").addEventListener("click", toggleLetters);
+    document.getElementById("themeBtn").addEventListener("click", toggleTheme);
     try { lettersHidden = localStorage.getItem("squardle_hide_letters") === "1"; } catch (e) {}
     applyLettersHidden();
     window.addEventListener("resize", function(){ renderSideHistory(); });

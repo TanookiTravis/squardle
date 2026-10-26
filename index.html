@@ -57,17 +57,36 @@
       width: 100%;
       max-width: 500px;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      align-items: center;
       margin: 2px 0 6px;
     }
-    .camera-btn { padding: 2px 8px; margin-right: 4px; color: #d7d7d7; }
+    .tool-left {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      flex: 1;
+    }
+    .camera-btn { padding: 2px 8px; margin-right: 4px; color: #d7d7d7; flex-shrink: 0; }
     .camera-btn.active { color: #fbbf24; }
+    .theme-btn {
+      padding: 2px 8px; margin-left: 1px; margin-top: 2px; color: #fff;
+      visibility: hidden; flex-shrink: 0;
+    }
+    .theme-btn.visible { visibility: visible; }
+    .theme-btn.active { color: #fbbf24; }
     body.letters-hidden .tile,
     body.letters-hidden .history-tile {
       color: transparent;
     }
-    .status { font-size: 0.9rem; color: #a0a0a0; margin-bottom: 8px; text-align: center; }
+    .status { font-size: 0.9rem; color: #a0a0a0; margin-bottom: 2px; text-align: center; }
     .status strong { color: #fff; }
+    .theme-note {
+      margin: 0 8px 0 -4px; font-size: 0.9rem; font-weight: 400;
+      color: #d0d0d0; visibility: hidden; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .theme-note.revealed { visibility: visible; }
     .board-wrap { margin: 8px 0 14px; position: relative; padding: var(--board-pad); }
     .side-count {
       position: absolute; color: #6b6b6d; font-size: 0.85rem; font-weight: 600;
@@ -199,6 +218,13 @@
       min-height: 24px; font-size: 0.95rem; font-weight: 600;
       text-align: center; margin: 4px 0 8px; transition: opacity 0.3s;
     }
+    .define-note {
+      min-height: 22px; font-size: 0.9rem; font-weight: 600;
+      text-align: center; margin: 0 0 6px; opacity: 0;
+      transition: opacity 0.3s; pointer-events: none;
+    }
+    .define-note.show { opacity: 1; pointer-events: auto; }
+    .define-note a { color: #93c5fd; text-decoration: underline; }
     .keyboard { width: 100%; max-width: 500px; margin-top: auto; padding-bottom: 12px; }
     .kb-row { display: flex; justify-content: center; gap: 2px; margin-bottom: 6px; }
     .key {
@@ -283,6 +309,16 @@
     </button>
   </header>
   <div class="tool-row">
+    <div class="tool-left">
+      <button type="button" class="icon-btn theme-btn" id="themeBtn" title="See the theme" aria-label="See the theme" aria-pressed="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M9 18h6"/>
+          <path d="M10 22h4"/>
+          <path d="M12 2a7 7 0 0 0-4 12.7c.4.4.6.9.6 1.4V17h6.8v-.9c0-.5.2-1 .6-1.4A7 7 0 0 0 12 2z"/>
+        </svg>
+      </button>
+      <div class="theme-note" id="themeNote" aria-live="polite"></div>
+    </div>
     <button class="icon-btn camera-btn" id="cameraBtn" title="Hide letters" aria-label="Hide letters" aria-pressed="false">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
@@ -340,6 +376,7 @@
       <div class="guess-tile" data-g="4"></div>
     </div>
   </div>
+  <div class="define-note" id="defineNote"></div>
   <div class="keyboard" id="keyboard"></div>
   <div class="modal-overlay" id="helpModal">
     <div class="modal">
